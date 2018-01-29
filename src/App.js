@@ -87,7 +87,7 @@ class About extends Component {
                 <div className="inner cover">
                     <form className="form-layout">
                         <p>Thanks for stopping by.  This web app is meant to be a proof of concept
-                        messaging app that I've been thinking about building for a while.  The frontend
+                        messaging app that I have been thinking about building for a while.  The frontend
                         is written in React and uses Bootstrap 4 and the LAME mp3 encoder (www.mp3dev.org)
                         to convert WAV files to mp3s.  The backend is written in Go and uses Postgres
                         to store user and message data.</p>
@@ -150,17 +150,17 @@ class AccountConfirmedScreen extends Component {
                                 formData.append("email", that.state.email);
                                 formData.append("password", that.state.password);
                                 var resetsXHR = new XMLHttpRequest();
-                                resetsXHR.addEventListener('load', function(event) {
+                                resetsXHR.addEventListener("load", function(event) {
                                     if (event.target.status === 200) {
                                         window.location.href = "/messages";
                                     } else {
                                         // TODO: alert user login failed
                                     }
                                 });
-                                resetsXHR.addEventListener('error', function(event) {
+                                resetsXHR.addEventListener("error", function(event) {
                                     // TODO: alert user login failed
                                 });
-                                resetsXHR.open('POST', '/login');
+                                resetsXHR.open("POST", "/login");
                                 resetsXHR.send(formData);
                             }}
                             >Sign in</button>
@@ -229,7 +229,7 @@ class ResetScreen extends Component {
                                         var formData = new FormData();
                                         formData.append("email", this.state.email);
                                         var resetsXHR = new XMLHttpRequest();
-                                        resetsXHR.addEventListener('load', function(event) {
+                                        resetsXHR.addEventListener("load", function(event) {
                                             if (event.target.status === 201) {
                                                 that.setState({coverHeadingText: "Reset link sent."})
                                                 that.setState({formSigninHeadingText: "Please click the link in the email sent to the address indicated. It may have gone to your spam folder."})
@@ -240,12 +240,12 @@ class ResetScreen extends Component {
                                                 that.setState({isShowRequestForm: false})
                                             }
                                         });
-                                        resetsXHR.addEventListener('error', function(event) {
+                                        resetsXHR.addEventListener("error", function(event) {
                                             that.setState({coverHeadingText: "There was an error creating password reset request."})
                                             that.setState({formSigninHeadingText: "Please try again later."})
                                             that.setState({isShowRequestForm: false})
                                         });
-                                        resetsXHR.open('POST', '/resets');
+                                        resetsXHR.open("POST", "/resets");
                                         resetsXHR.send(formData);
                                     }}
                                     >Request Reset</button>
@@ -290,7 +290,7 @@ class ResetScreen extends Component {
                                         var formData = new FormData();
                                         formData.append("password", that.state.password);
                                         var resetsXHR = new XMLHttpRequest();
-                                        resetsXHR.addEventListener('load', function(event) {
+                                        resetsXHR.addEventListener("load", function(event) {
                                             if (event.target.status === 200) {
                                                 that.setState({coverHeadingText: "Your password has been reset."})
                                                 that.setState({formSigninHeadingText: "Please log in."})
@@ -301,12 +301,12 @@ class ResetScreen extends Component {
                                                 that.setState({isShowResetForm: false})
                                             }
                                         });
-                                        resetsXHR.addEventListener('error', function(event) {
+                                        resetsXHR.addEventListener("error", function(event) {
                                             that.setState({coverHeadingText: "There was an error creating password reset request."})
                                             that.setState({formSigninHeadingText: "Please try again later."})
                                             that.setState({isShowResetForm: false})
                                         });
-                                        resetsXHR.open('POST', '/resets/' + that.state.resetID);
+                                        resetsXHR.open('POST', "/resets/" + that.state.resetID);
                                         resetsXHR.send(formData);
                                     } else {
                                         // TODO: notify user that passwords don't match
@@ -835,7 +835,7 @@ function AudioRecorder(context) {
     }
 
     function setupStorage() {
-        Storage.context = new AudioContext();
+        Storage.context = new context.AudioContext();
         if (Storage.context.createJavaScriptNode) {
             jsAudioNode = Storage.context.createJavaScriptNode(bufferSize, numberOfAudioChannels, numberOfAudioChannels);
         } else if (Storage.context.createScriptProcessor) {
