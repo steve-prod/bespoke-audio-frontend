@@ -56,8 +56,11 @@ class App extends Component {
                 mainScreen = <Messages />;
             }
             break;
+        case "signups":
+            mainScreen = <AccountConfirmedScreen />;
+            break;
         case "resets":
-            mainScreen = <ResetsScreen />
+            mainScreen = <ResetScreen />
             break;
         case "about":
             mainScreen = <About />;
@@ -97,7 +100,27 @@ class About extends Component {
     };
 }
 
-class ResetsScreen extends Component {
+class AccountConfirmedScreen extends Component {
+    render() {
+        return (
+            <main role="main" class="container">
+                <div class="inner cover">
+                    <h1 class="cover-heading text-center">Account verified.</h1>
+                    <form class="form-signin" method="POST" action="/login">
+                        <h2 class="form-signin-heading">Please log in</h2>
+                        <label for="email" class="sr-only">Email address</label>
+                        <input type="email" name="email" class="form-control" placeholder="Email address" required autofocus />
+                        <label for="password" class="sr-only">Password</label>
+                        <input type="password" name="password" class="form-control" placeholder="Password" required />
+                        <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+                    </form>
+                </div>
+            </main>
+        )
+    }
+}
+
+class ResetScreen extends Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -106,7 +129,7 @@ class ResetsScreen extends Component {
             isShowRequestForm: true,
             isShowResetForm: true,
             email: "",
-            resetID: window.location.pathname.split("/").length > 2 && window.location.pathname.split("/")[2].replace(/[\<>!;&]/g, ""), // can't remember if second char is . or -
+            resetID: window.location.pathname.split("/").length > 2 && window.location.pathname.split("/")[2].replace(/[\<>!;&]/g, ""),
             password: "",
             samePassword: ""
         }
@@ -1072,7 +1095,6 @@ class Recorder extends Component {
             </div>
             {!this.props.isReplyingToPublic && <StatusTabs
                 isLoaded={this.state.isLoaded}
-                onIsLoadedChange={this.state.handleIsLoadedChange}
                 recorder={this.recorder}
                 onNeedsRefreshChange={this.handleNeedsRefreshChange}
                 statusTab={this.props.statusTab}
@@ -1083,8 +1105,12 @@ class Recorder extends Component {
              {this.props.isReplyingToPublic &&
                  <ReplyConsole
                      messageID={this.props.messageID}
+                     isLoaded={this.state.isLoaded}
+                     recorder={this.recorder}
                      isReplyingPublicly={this.props.isReplyingPublicly}
                      onIsReplyingPubliclyChange={this.handleIsReplyingPubliclyChange}
+                     onNeedsRefreshChange={this.handleNeedsRefreshChange}
+                     onIsReplyingToPublicChange={this.handleIsReplyingToPublicChange}
                  />}
         </div>
     );
@@ -1094,11 +1120,54 @@ class Recorder extends Component {
 class ReplyConsole extends Component {
     constructor(props) {
         super(props);
+        this.state = {
+            buttonText: "Send",
+            buttonClasses: "btn btn-primary",
+            tags: ""
+        };
+        this.handleNeedsRefreshChange = this.handleNeedsRefreshChange.bind(this);
+        this.indicateSuccess = this.indicateSuccess.bind(this);
+        this.indicateFailure = this.indicateFailure.bind(this);
+        this.resetReplyConsole = this.resetReplyConsole.bind(this);
         this.handleIsReplyingPubliclyChange = this.handleIsReplyingPubliclyChange.bind(this);
+        this.handleTagsChange = this.handleTagsChange.bind(this);
+        this.handleIsReplyingToPublicChange = this.handleIsReplyingToPublicChange.bind(this);
+    }
+
+    handleIsReplyingToPublicChange(isReplyingToPublic) {
+        this.props.onIsReplyingToPublicChange(isReplyingToPublic);
+    }
+
+    handleNeedsRefreshChange() {
+        this.props.onNeedsRefreshChange();
+    }
+
+    indicateSuccess() {
+        this.setState({buttonClasses: "btn btn-outline-success"});
+        this.setState({buttonText: "Message Sent"});
+        var that = this;
+        setTimeout(that.resetReplyConsole, 2000);
+    }
+
+    indicateFailure() {
+        this.setState({buttonClasses: "btn btn-lg btn-outline-danger"});
+        this.setState({buttonText: "Send Failed :("});
+        var that = this;
+        setTimeout(that.resetReplyConsole, 2000);
+    }
+
+    resetReplyConsole() {
+        this.setState({buttonClasses: "btn btn-primary"});
+        this.setState({buttonText: "Send Reply"});
+        this.setState({tags: ""})
     }
 
     handleIsReplyingPubliclyChange(isReplyingPublicly) {
         this.props.onIsReplyingPubliclyChange(isReplyingPublicly);
+    }
+
+    handleTagsChange(tags) {
+        this.setState({tags: tags})
     }
 
     render() {
@@ -1116,6 +1185,9 @@ class ReplyConsole extends Component {
                       className="form-control"
                       name="tags"
                       placeholder="#tag #topic"
+                      onChange={(e) => {
+                          this.handleTagsChange(e.target.value)
+                      }}
                     />
                   </div>
                 </div>
@@ -1156,17 +1228,38 @@ class ReplyConsole extends Component {
                         id="btn-cancel-reply"
                         className="btn btn-secondary"
                         type="button"
-                        onclick="resetRecordTab(event);"
+                        onClick={() => {
+                            this.handleIsReplyingToPublicChange(false);
+                        }}
                         >
                             Cancel
                         </button>
                       <button
                         id="btn-send-reply"
-                        className="btn btn-primary"
+                        className={this.state.buttonClasses}
                         type="button"
-                        onclick="sendReply(event);"
+                        onClick={(e) => {
+                            var that = this;
+                            var formData = new FormData();
+                            formData.append("blob", that.props.recorder.blob);
+                            formData.append("isPublic", that.props.isReplyingPublicly);
+                            if (that.props.isReplyingPublicly) {
+                                formData.append("tags", this.state.tags);
+                            }
+                            var xhr = new XMLHttpRequest();
+                            xhr.addEventListener("load", function(event){
+                                that.handleNeedsRefreshChange();
+                                that.indicateSuccess();
+                            });
+                            xhr.addEventListener("error", function(event){
+                                that.indicateFailure();
+                            });
+                            xhr.open("POST", "/reply/" + that.props.messageID);
+                            xhr.send(formData);
+                        }}
+                        disabled={!this.props.isLoaded}
                       >
-                        Send Reply
+                        {this.state.buttonText}
                       </button>
                   <br />
                 </div>
@@ -1182,12 +1275,11 @@ class ReplyConsole extends Component {
 class PrivateTab extends Component {
     constructor(props) {
         super(props);
-        this.handleNeedsRefreshChange = this.handleNeedsRefreshChange.bind(this);
-        // this.handleChange = this.handleChange.bind(this);
         this.state = {
             buttonText: "Send",
             buttonClasses: "btn btn-lg btn-primary btn-block"
         };
+        this.handleNeedsRefreshChange = this.handleNeedsRefreshChange.bind(this);
         this.indicateSuccess = this.indicateSuccess.bind(this);
         this.indicateFailure = this.indicateFailure.bind(this);
         this.resetPrivateTab = this.resetPrivateTab.bind(this);
@@ -1218,10 +1310,6 @@ class PrivateTab extends Component {
         this.setState({recipient: ""});
         document.getElementById("recipient").value = "";
     }
-
-    // handleChange(event) {
-    //     this.setState({recipient: event.target.value})
-    // }
 
     handleNeedsRefreshChange() {
         this.props.onNeedsRefreshChange();
@@ -1409,9 +1497,6 @@ class StatusTabs extends Component {
       constructor(props) {
           super(props);
           this.toggle = this.toggle.bind(this);
-          // this.state = {
-          //     activeTab: 'private-tab'
-          // };
           this.handleNeedsRefreshChange = this.handleNeedsRefreshChange.bind(this);
           this.handleStatusTabChange = this.handleStatusTabChange.bind(this);
           this.handleRecipientChange = this.handleRecipientChange.bind(this);
@@ -1430,9 +1515,6 @@ class StatusTabs extends Component {
       }
 
       toggle(tab) {
-          // if (this.state.activeTab !== tab) {
-          //     this.setState({activeTab: tab});
-          // }
           this.handleStatusTabChange(tab);
       }
 
@@ -1499,6 +1581,11 @@ class Inbox extends Component {
         this.handleActiveTabChange = this.handleActiveTabChange.bind(this);
         this.handleStatusTabChange = this.handleStatusTabChange.bind(this);
         this.handleRecipientChange = this.handleRecipientChange.bind(this);
+        this.handleIsReplyingToPublicChange = this.handleIsReplyingToPublicChange.bind(this);
+    }
+
+    handleIsReplyingToPublicChange(isReplyingToPublic) {
+        this.props.onIsReplyingToPublicChange(isReplyingToPublic);
     }
 
     handleRecipientChange(recipient) {
@@ -1537,6 +1624,7 @@ class Inbox extends Component {
                         onActiveTabChange={this.handleActiveTabChange}
                         onStatusTabChange={this.handleStatusTabChange}
                         onRecipientChange={this.handleRecipientChange}
+                        onIsReplyingToPublicChange={this.handleIsReplyingToPublicChange}
                     />
                 </div>
             );
@@ -1550,6 +1638,11 @@ class MessageList extends Component {
         this.handleActiveTabChange = this.handleActiveTabChange.bind(this);
         this.handleStatusTabChange = this.handleStatusTabChange.bind(this);
         this.handleRecipientChange = this.handleRecipientChange.bind(this);
+        this.hanldeIsReplyingToPublicChange = this.handleIsReplyingToPublicChange.bind(this);
+    }
+
+    handleIsReplyingToPublicChange(isReplyingToPublic) {
+        this.props.onIsReplyingToPublicChange(isReplyingToPublic);
     }
 
     handleRecipientChange(recipient) {
@@ -1586,6 +1679,7 @@ class MessageList extends Component {
                                 data-from={message.creatorID}
                                 data-message={"/messages/" + message.messageID}
                                 onClick={(e) => {
+                                    this.handleIsReplyingToPublicChange(false);
                                     this.handleStatusTabChange('private-tab');
                                     this.handleActiveTabChange('recorder');
                                     this.handleRecipientChange(e.target.dataset.from);
@@ -1598,7 +1692,6 @@ class MessageList extends Component {
                                     type="button"
                                     data-message={"/messages/" + message.messageID}
                                     onClick={(e) => {
-                                        console.log(e);
                                         var that = this;
                                         var xhr = new XMLHttpRequest();
                                         xhr.addEventListener("load", function(event){
@@ -1725,25 +1818,84 @@ class PrimaryNav extends Component {
 }
 
 class SignupForm extends Component {
+    constructor(props) {
+        super(props)
+        this.state = {
+            isShowSignupForm: true,
+            firstName: "",
+            lastName: "",
+            email: "",
+            password: ""
+        }
+        this.handleIsShowSignupFormChange = this.handleIsShowSignupFormChange.bind(this);
+        this.handleFirstNameChange = this.handleFirstNameChange.bind(this);
+        this.handleLastNameChange = this.handleLastNameChange.bind(this);
+        this.handleEmailChange = this.handleEmailChange.bind(this);
+        this.handlePasswordChange = this.handlePasswordChange.bind(this);
+    }
+
+    handleFirstNameChange (firstName) {
+        this.setState({firstName: firstName});
+    }
+
+    handleLastNameChange (lastName) {
+        this.setState({lastName: lastName});
+    }
+
+    handleEmailChange(email) {
+        this.setState({email: email});
+    }
+
+    handlePasswordChange(password) {
+        this.setState({password: password});
+    }
+
+    handleIsShowSignupFormChange(isShowSignupForm) {
+        this.setState({isShowSignupForm: isShowSignupForm})
+    }
+
   render() {
-    return (
-      <div>
-        <form className="form-signup" method="POST" action="/signups">
-          <h1 className="cover-heading">Welcome to Bespoke-Audio</h1>
-          <div className="row">
-            <div className="col-xs-12 col-sm-12">
+      var content;
+      if (this.state.isShowSignupForm) {
+          content = (
+              <div class="inner cover">
+              <h1 className="cover-heading">Welcome to Bespoke-Audio</h1>
               <h2 className="form-signup-heading">Please sign up</h2>
-            </div>
+              <form className="form-signup" method="POST" action="/signups">
+                  <div className="row">
+                      <SignupFirstNameInput onFirstNameChange={this.handleFirstNameChange} />
+                      <SignupLastNameInput onLastNameChange={this.handleLastNameChange} />
+                  </div>
+                  <SignupEmailInput onEmailChange={this.handleEmailChange} />
+                  <SignupPasswordInput onPasswordChange={this.handlePasswordChange} />
+                  <SubmitSignupButton
+                      onIsShowSignupFormChange={this.handleIsShowSignupFormChange}
+                      firstName={this.state.firstName}
+                      lastName={this.state.lastName}
+                      email={this.state.email}
+                      password={this.state.password}
+                  />
+              </form>
+              Forget your password? Request a <a href="/resets">reset</a>.<br />
           </div>
-          <div className="row">
-            <SignupFirstNameInput />
-            <SignupLastNameInput />
-          </div>
-          <SignupEmailInput />
-          <SignupPasswordInput />
-          <SubmitSignupButton />
-          Forget your password? Request a <a href="/resets">reset</a>.<br />
-        </form>
+          );
+      } else {
+          content = (
+              <div class="inner cover">
+              <h1 class="cover-heading">Confirmation email sent.</h1>
+              <form className="form-signup">
+                  <p>Thank you for signing up with Bespoke-Audio. A confirmation email
+                      has been sent to the email you provided. Please click on the
+                      link in the email to confirm your email address.</p>
+              </form>
+              </div>
+          );
+      }
+    return (
+        <div>
+        <main role="main" class="container">
+            {content}
+        </main>
         <Footer />
       </div>
     );
@@ -1751,6 +1903,15 @@ class SignupForm extends Component {
 }
 
 class SignupFirstNameInput extends Component {
+    constructor(props) {
+        super(props);
+        this.handleFirstNameChange = this.handleFirstNameChange.bind(this);
+    }
+
+    handleFirstNameChange(event) {
+        this.props.onFirstNameChange(event.target.value);
+    }
+
     render() {
         return (
             <div className="col-xs-12 col-sm-6">
@@ -1764,6 +1925,7 @@ class SignupFirstNameInput extends Component {
                   className="form-control"
                   name="first-name"
                   placeholder="First name"
+                  onChange={(e) => this.handleFirstNameChange(e)}
                   required
                   autoFocus
                 />
@@ -1774,6 +1936,15 @@ class SignupFirstNameInput extends Component {
 }
 
 class SignupLastNameInput extends Component {
+    constructor(props) {
+        super(props);
+        this.handleLastNameChange = this.handleLastNameChange.bind(this);
+    }
+
+    handleLastNameChange(event) {
+        this.props.onLastNameChange(event.target.value);
+    }
+
     render() {
         return (
             <div className="col-xs-12 col-sm-6">
@@ -1787,6 +1958,7 @@ class SignupLastNameInput extends Component {
                   className="form-control"
                   name="last-name"
                   placeholder="Last name"
+                  onChange={(e) => this.handleLastNameChange(e)}
                   required
                 />
               </div>
@@ -1796,6 +1968,15 @@ class SignupLastNameInput extends Component {
 }
 
 class SignupEmailInput extends Component {
+    constructor(props) {
+        super(props);
+        this.handleEmailChange = this.handleEmailChange.bind(this);
+    }
+
+    handleEmailChange(event) {
+        this.props.onEmailChange(event.target.value);
+    }
+
     render() {
         return (
             <div className="row">
@@ -1810,6 +1991,7 @@ class SignupEmailInput extends Component {
                     className="form-control"
                     name="email"
                     placeholder="Email address"
+                    onChange={(e) => this.handleEmailChange(e)}
                     required
                   />
                 </div>
@@ -1820,6 +2002,15 @@ class SignupEmailInput extends Component {
 }
 
 class SignupPasswordInput extends Component {
+    constructor(props) {
+        super(props);
+        this.handlePasswordChange = this.handlePasswordChange.bind(this);
+    }
+
+    handlePasswordChange(event) {
+        this.props.onPasswordChange(event.target.value);
+    }
+
     render() {
         return (
             <div className="row">
@@ -1834,6 +2025,7 @@ class SignupPasswordInput extends Component {
                     className="form-control"
                     name="password"
                     placeholder="Password"
+                    onChange={(e) => this.handlePasswordChange(e)}
                     required
                   />
                 </div>
@@ -1844,13 +2036,43 @@ class SignupPasswordInput extends Component {
 }
 
 class SubmitSignupButton extends Component {
+    constructor(props) {
+        super(props);
+        this.handleIsShowSignupFormChange = this.handleIsShowSignupFormChange.bind(this);
+    }
+
+    handleIsShowSignupFormChange(isShowSignupForm) {
+        this.props.onIsShowSignupFormChange(isShowSignupForm);
+    }
+
     render() {
         return (
             <div className="row">
               <div className="col-xs-12 col-sm-4 col-sm-offset-4">
                 <button
                   className="btn btn-lg btn-primary btn-block"
-                  type="submit"
+                  type="button"
+                  onClick={(e) => {
+                      var that = this;
+                      var formData = new FormData();
+                      formData.append("first-name", this.props.firstName);
+                      formData.append("last-name", this.props.lastName);
+                      formData.append("email", this.props.email);
+                      formData.append("password", this.props.password);
+                      var resetsXHR = new XMLHttpRequest();
+                      resetsXHR.addEventListener('load', function(event) {
+                          if (event.target.status === 201) {
+                              that.handleIsShowSignupFormChange(false);
+                          } else {
+                              // TODO: alert user sign up failed
+                          }
+                      });
+                      resetsXHR.addEventListener('error', function(event) {
+                          // TODO: alert user sign up failed
+                      });
+                      resetsXHR.open('POST', '/signups');
+                      resetsXHR.send(formData);
+                  }}
                 >
                   Sign up
                 </button>
