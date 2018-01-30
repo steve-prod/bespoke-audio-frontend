@@ -125,7 +125,7 @@ class AccountConfirmedScreen extends Component {
     }
 
     handleKeyPress(event) {
-        if (event.key == "Enter") {
+        if (event.key === "Enter") {
             this.handleSubmitForm();
         }
     }
@@ -298,9 +298,7 @@ class ResetScreen extends Component {
                                 type="button"
                                 onClick={(event) => {
                                     var that = this;
-                                    console.log(that.state.resetID);
                                     if (this.state.password === this.state.samePassword) {
-                                        var that = this;
                                         var formData = new FormData();
                                         formData.append("password", that.state.password);
                                         var resetsXHR = new XMLHttpRequest();
@@ -363,17 +361,19 @@ class Message extends Component {
         var messagesXHR = new XMLHttpRequest();
         var that = this;
         messagesXHR.addEventListener('load', function(event) {
-            console.log(event)
             if (event.target.status === 200) {
                 var message = JSON.parse(event.target.responseText);
                 that.setState({creatorID: message.creatorID});
                 that.setState({messageID: message.messageID});
             }
             if (event.target.status === 401) {
-                that.setState({error: "Please log in."})
+                that.setState({error: "Please log in."});
             }
             if (event.target.status === 403) {
-                that.setState({error: "This is not your message."})
+                that.setState({error: "This is not your message."});
+            }
+            if (event.target.status === 404) {
+                that.setState({error: "Message not found. It may have been deleted."});
             }
         });
         messagesXHR.addEventListener('error', function(event) {
@@ -396,26 +396,45 @@ class Message extends Component {
                             {!this.state.error &&
                             <ul class="no-bullets">
                                 <div class="row align-items-center message">
-                                    <div class="col-xs-12 col-sm-7">
+                                    <div class="col-xs-12 col-sm-8">
                                         From: {this.state.creatorID}
                                         <audio id="received-message" controls='""' src={this.state.messageID ? "/audio/" + this.state.messageID + ".mp3" : ""}></audio>
                                     </div>
-                                    <div class="col-xs-12 col-sm-5">
+                                    <div class="col-xs-12 col-sm-4">
                                         <button
-                                            id="btn-messages"
                                             className="btn btn-primary"
-                                            type="button"
-                                            onClick=""
-                                            >Reply</button>
-                                        <button
-                                            id="btn-delete"
-                                            className="btn btn-danger"
-
                                             type="button"
                                             data-from={this.state.creatorID}
                                             data-message={"/messages/" + this.state.messageID}
-                                            onClick=""
-                                            >Delete</button>
+                                            onClick={(e) => {
+                                                this.handleIsReplyingToPublicChange(false);
+                                                this.handleStatusTabChange('private-tab');
+                                                this.handleActiveTabChange('recorder');
+                                                this.handleRecipientChange(this.state.creatorID);
+                                            }}
+                                            >
+                                                Reply
+                                            </button>
+                                        <button
+                                            className="btn btn-danger"
+                                            type="button"
+                                            data-message={"/messages/" + this.state.messageID}
+                                            data-from={this.state.creatorID}
+                                            onClick={(e) => {
+                                                var that = this;
+                                                var xhr = new XMLHttpRequest();
+                                                xhr.addEventListener("load", function(event){
+                                                    that.setState({error: "Message Deleted"});
+                                                });
+                                                xhr.addEventListener("error", function(event){
+                                                    alert("An error occurred while deleting the message.");
+                                                });
+                                                xhr.open("DELETE", this.state.messageID);
+                                                xhr.send();
+                                            }}
+                                            >
+                                                Delete
+                                            </button>
                                     </div>
                                 </div>
                             </ul>}
@@ -1372,7 +1391,7 @@ class PrivateTab extends Component {
     }
 
     handleKeyPress(event) {
-        if (event.key == "Enter") {
+        if (event.key === "Enter") {
             this.handleSendMessage();
         }
     }
