@@ -352,7 +352,8 @@ class Message extends Component {
         super(props)
         this.state = {
             creatorID: "",
-            messageID: ""
+            messageID: "",
+            error: ""
         }
         this.getMessage();
     }
@@ -362,9 +363,18 @@ class Message extends Component {
         var messagesXHR = new XMLHttpRequest();
         var that = this;
         messagesXHR.addEventListener('load', function(event) {
-            var message = JSON.parse(event.target.responseText);
-            that.setState({creatorID: message.creatorID});
-            that.setState({messageID: message.messageID});
+            console.log(event)
+            if (event.target.status === 200) {
+                var message = JSON.parse(event.target.responseText);
+                that.setState({creatorID: message.creatorID});
+                that.setState({messageID: message.messageID});
+            }
+            if (event.target.status === 401) {
+                that.setState({error: "Please log in."})
+            }
+            if (event.target.status === 403) {
+                that.setState({error: "This is not your message."})
+            }
         });
         messagesXHR.addEventListener('error', function(event) {
           console.log('An error occurred while getting the message:');
@@ -381,6 +391,9 @@ class Message extends Component {
                 <main role="main" class="container">
                     <div class="inner cover">
                         <form class="form-layout">
+                            {this.state.error &&
+                            <h1>{this.state.error}</h1>}
+                            {!this.state.error &&
                             <ul class="no-bullets">
                                 <div class="row align-items-center message">
                                     <div class="col-xs-12 col-sm-7">
@@ -393,7 +406,7 @@ class Message extends Component {
                                             className="btn btn-primary"
                                             type="button"
                                             onClick=""
-                                            >Messages</button>
+                                            >Reply</button>
                                         <button
                                             id="btn-delete"
                                             className="btn btn-danger"
@@ -405,7 +418,7 @@ class Message extends Component {
                                             >Delete</button>
                                     </div>
                                 </div>
-                            </ul>
+                            </ul>}
                         </form>
                     </div>
                 </main>
