@@ -20,7 +20,10 @@ import lamejs from 'lamejs'
 class App extends Component {
   constructor(props) {
     super(props);
-    this.state = {isLoggedIn: false}
+    this.state = {
+        isLoggedIn: false,
+        mainScreen: null
+    }
   }
 
   componentDidMount() {
@@ -41,8 +44,8 @@ class App extends Component {
   }
 
   render() {
-    var mainScreen = null;
     var menu = <Menu isLoggedIn={this.state.isLoggedIn} />;
+    var mainScreen = null;
     // setup frontend routing
     var pathname = window.location.pathname.split("/")[1].replace(/[\W]/g, "");
     switch (pathname) {
@@ -109,6 +112,8 @@ class AccountConfirmedScreen extends Component {
         };
         this.handleEmailChange = this.handleEmailChange.bind(this);
         this.handlePasswordChange = this.handlePasswordChange.bind(this);
+        this.handleSubmitForm = this.handleSubmitForm.bind(this);
+        this.handleKeyPress = this.handleKeyPress.bind(this);
     }
 
     handleEmailChange(email) {
@@ -117,6 +122,32 @@ class AccountConfirmedScreen extends Component {
 
     handlePasswordChange(password) {
         this.setState({password:password})
+    }
+
+    handleKeyPress(event) {
+        if (event.key == "Enter") {
+            this.handleSubmitForm();
+        }
+    }
+
+    handleSubmitForm() {
+        var that = this;
+        var formData = new FormData();
+        formData.append("email", that.state.email);
+        formData.append("password", that.state.password);
+        var resetsXHR = new XMLHttpRequest();
+        resetsXHR.addEventListener("load", function(event) {
+            if (event.target.status === 200) {
+                window.location.href = "/messages";
+            } else {
+                // TODO: alert user login failed
+            }
+        });
+        resetsXHR.addEventListener("error", function(event) {
+            // TODO: alert user login failed
+        });
+        resetsXHR.open("POST", "/login");
+        resetsXHR.send(formData);
     }
 
     render() {
@@ -141,28 +172,11 @@ class AccountConfirmedScreen extends Component {
                             className="form-control"
                             placeholder="Password"
                             onChange={(e) => this.handlePasswordChange(e.target.value)}
+                            onKeyPress={(e) => this.handleKeyPress(e)}
                             required />
                         <button class="btn btn-lg btn-primary btn-block"
                             type="button"
-                            onClick={(e) => {
-                                var that = this;
-                                var formData = new FormData();
-                                formData.append("email", that.state.email);
-                                formData.append("password", that.state.password);
-                                var resetsXHR = new XMLHttpRequest();
-                                resetsXHR.addEventListener("load", function(event) {
-                                    if (event.target.status === 200) {
-                                        window.location.href = "/messages";
-                                    } else {
-                                        // TODO: alert user login failed
-                                    }
-                                });
-                                resetsXHR.addEventListener("error", function(event) {
-                                    // TODO: alert user login failed
-                                });
-                                resetsXHR.open("POST", "/login");
-                                resetsXHR.send(formData);
-                            }}
+                            onClick={() => this.handleSubmitForm}
                             >Sign in</button>
                     </form>
                 </div>
@@ -180,7 +194,7 @@ class ResetScreen extends Component {
             isShowRequestForm: true,
             isShowResetForm: true,
             email: "",
-            resetID: window.location.pathname.split("/").length > 2 && window.location.pathname.split("/")[2].replace(/[\<>!;&]/g, ""),
+            resetID: window.location.pathname.split("/").length > 2 && window.location.pathname.split("/")[2].replace(/[<>!;&]/g, ""),
             password: "",
             samePassword: ""
         }
@@ -333,67 +347,72 @@ class ResetScreen extends Component {
         }
 };
 
-function getMessage() {
-    var messageID = window.location.pathname.split("/")[1].replace(/[\W=]/g, "");
-    var messagesXHR = new XMLHttpRequest();
-    messagesXHR.addEventListener('load', function(event) {
-      console.log(messagesXHR.responseText);
-      return [];
-      // var publicMessages = {};
-      // publicMessages.raw = messagesXHR.responseText;
-      // publicMessages.raw = publicMessages.raw.slice(2,publicMessages.raw.length-2);
-      // publicMessages.raw = publicMessages.raw.split("},{");
-      // publicMessages.mArray = [];
-      // publicMessages.raw.forEach(function(v, i) {
-      //     var line = v.split(",");
-      //     var message = {};
-      //     if(v != "") {
-      //         message.id = JSON.parse(line[0].split(":")[1]);
-      //         message.tags = atob(JSON.parse(line[1].split(":")[1]));
-      //         message.tags = message.tags.slice(2,message.tags.length-2).split(",");
-      //         publicMessages.mArray.push(message);
-      //     }
-      //     delete line;
-      // })
-      // delete publicMessages.raw;
-      // // Add a div for each public message
-      // publicMessages.mArray.forEach(function(v,i) {
-      //     addMessage(v);
-      // })
-    });
-    messagesXHR.addEventListener('error', function(event) {
-      console.log('An error occurred while deleting the message.');
-      return [];
-    });
-    messagesXHR.open('GET', '/messages/' + messageID);
-    messagesXHR.send();
-}
+class Message extends Component {
+    constructor(props) {
+        super(props)
+        this.state = {
+            creatorID: "",
+            messageID: ""
+        }
+        this.getMessage();
+    }
 
-function Message() {
-    const message = getMessage();
+    getMessage() {
+        var messageID = window.location.pathname.split("/")[2].replace(/[<>!;&]/g, "");
+        var messagesXHR = new XMLHttpRequest();
+        var that = this;
+        messagesXHR.addEventListener('load', function(event) {
+            var message = JSON.parse(event.target.responseText);
+            that.setState({creatorID: message.creatorID});
+            that.setState({messageID: message.messageID});
+        });
+        messagesXHR.addEventListener('error', function(event) {
+          console.log('An error occurred while getting the message:');
+          console.log(event);
+        });
+        messagesXHR.open('GET', '/messages/' + messageID);
+        messagesXHR.setRequestHeader('Accept', 'application/json');
+        messagesXHR.send();
+    }
+
+    render() {
         return (
             <div>
-            <main role="main" class="container">
-                <div class="inner cover">
-                    <form class="form-layout">
-                        <ul class="no-bullets">
-                            <div class="row align-items-center message">
-                                <div class="col-xs-12 col-sm-7">
-                                    From: {message.CreatorID}
-                                    <audio id="received-message" controls="" src={"/audio/" + message.MessageID + ".mp3"}></audio>
+                <main role="main" class="container">
+                    <div class="inner cover">
+                        <form class="form-layout">
+                            <ul class="no-bullets">
+                                <div class="row align-items-center message">
+                                    <div class="col-xs-12 col-sm-7">
+                                        From: {this.state.creatorID}
+                                        <audio id="received-message" controls='""' src={this.state.messageID ? "/audio/" + this.state.messageID + ".mp3" : ""}></audio>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-5">
+                                        <button
+                                            id="btn-messages"
+                                            className="btn btn-primary"
+                                            type="button"
+                                            onClick=""
+                                            >Messages</button>
+                                        <button
+                                            id="btn-delete"
+                                            className="btn btn-danger"
+
+                                            type="button"
+                                            data-from={this.state.creatorID}
+                                            data-message={"/messages/" + this.state.messageID}
+                                            onClick=""
+                                            >Delete</button>
+                                    </div>
                                 </div>
-                                <div class="col-xs-12 col-sm-5">
-                                    <button id="btn-messages" class="btn btn-primary" type="button" onclick='gotoMessages(event)'>Messages</button>
-                                    <button id="btn-delete" class="btn btn-danger" type="button" data-from={message.CreatorID} data-message={"/messages/" + message.MessageID} onclick='deleteMessage(event)'>Delete</button>
-                                </div>
-                            </div>
-                        </ul>
-                    </form>
-                </div>
-            </main>
-            <Footer />
-        </div>
+                            </ul>
+                        </form>
+                    </div>
+                </main>
+                <Footer />
+            </div>
         );
+    }
 }
 
 class Messages extends Component {
@@ -1335,6 +1354,14 @@ class PrivateTab extends Component {
         this.indicateFailure = this.indicateFailure.bind(this);
         this.resetPrivateTab = this.resetPrivateTab.bind(this);
         this.handleRecipientChange = this.handleRecipientChange.bind(this);
+        this.handleKeyPress = this.handleKeyPress.bind(this);
+        this.handleSendMessage = this.handleSendMessage.bind(this);
+    }
+
+    handleKeyPress(event) {
+        if (event.key == "Enter") {
+            this.handleSendMessage();
+        }
     }
 
     handleRecipientChange(event) {
@@ -1366,6 +1393,28 @@ class PrivateTab extends Component {
         this.props.onNeedsRefreshChange();
     }
 
+    handleSendMessage() {
+        if(this.props.isLoaded) {
+            var that = this;
+            var formData = new FormData();
+            formData.append("blob", that.props.recorder.getBlob());
+            formData.append("recipient", that.props.recipient);
+            formData.append("isPublic", false);
+            var xhr = new XMLHttpRequest();
+            xhr.addEventListener("load", function(event){
+                that.handleNeedsRefreshChange();
+                that.indicateSuccess();
+            });
+            xhr.addEventListener("error", function(event){
+                that.indicateFailure();
+            });
+            xhr.open("POST", "/messages");
+            xhr.send(formData);
+        } else {
+            alert('No message has been recorded.')
+        }
+    }
+
   render() {
     return (
       <div
@@ -1391,6 +1440,7 @@ class PrivateTab extends Component {
                 placeholder="email@address.com"
                 value={this.props.recipient}
                 onChange={this.handleRecipientChange}
+                onKeyPress={(e) => this.handleKeyPress(e)}
                 required={this.props.isLoaded}
               />
             </div>
@@ -1402,27 +1452,7 @@ class PrivateTab extends Component {
               id="btn-send-recording"
               className={this.state.buttonClasses}
               type="button"
-              onClick={() => {
-                  if(this.props.isLoaded) {
-                      var that = this;
-                      var formData = new FormData();
-                      formData.append("blob", that.props.recorder.getBlob());
-                      formData.append("recipient", that.props.recipient);
-                      formData.append("isPublic", false);
-                      var xhr = new XMLHttpRequest();
-                      xhr.addEventListener("load", function(event){
-                          that.handleNeedsRefreshChange();
-                          that.indicateSuccess();
-                      });
-                      xhr.addEventListener("error", function(event){
-                          that.indicateFailure();
-                      });
-                      xhr.open("POST", "/messages");
-                      xhr.send(formData);
-                  } else {
-                      alert('No message has been recorded.')
-                  }
-              }}
+              onClick={this.handleSendMessage}
               disabled={this.props.recipient.indexOf("@") === -1 || !this.props.isLoaded}
             >
               {this.state.buttonText}
@@ -1836,6 +1866,8 @@ class LoginForm extends Component {
         };
         this.handleEmailChange = this.handleEmailChange.bind(this);
         this.handlePasswordChange = this.handlePasswordChange.bind(this);
+        this.handleKeyPress = this.handleKeyPress.bind(this);
+        this.handleSubmitForm = this.handleSubmitForm.bind(this);
     }
 
     handleEmailChange(email) {
@@ -1844,6 +1876,32 @@ class LoginForm extends Component {
 
     handlePasswordChange(password) {
         this.setState({password:password})
+    }
+
+    handleKeyPress(event) {
+        if (event.key === "Enter") {
+            this.handleSubmitForm();
+        }
+    }
+
+    handleSubmitForm() {
+        var that = this;
+        var formData = new FormData();
+        formData.append("email", that.state.email);
+        formData.append("password", that.state.password);
+        var resetsXHR = new XMLHttpRequest();
+        resetsXHR.addEventListener('load', function(event) {
+            if (event.target.status === 200) {
+                window.location.href = "/messages";
+            } else {
+                // TODO: alert user login failed
+            }
+        });
+        resetsXHR.addEventListener('error', function(event) {
+            // TODO: alert user login failed
+        });
+        resetsXHR.open('POST', '/login');
+        resetsXHR.send(formData);
     }
 
   render() {
@@ -1864,29 +1922,12 @@ class LoginForm extends Component {
           placeholder="Password"
           aria-label="Password"
           onChange={(e) => this.handlePasswordChange(e.target.value)}
+          onKeyPress={(e) => this.handleKeyPress(e)}
         />
         <button
             className="btn btn-primary"
             type="button"
-            onClick={(e) => {
-                var that = this;
-                var formData = new FormData();
-                formData.append("email", that.state.email);
-                formData.append("password", that.state.password);
-                var resetsXHR = new XMLHttpRequest();
-                resetsXHR.addEventListener('load', function(event) {
-                    if (event.target.status === 200) {
-                        window.location.href = "/messages";
-                    } else {
-                        // TODO: alert user login failed
-                    }
-                });
-                resetsXHR.addEventListener('error', function(event) {
-                    // TODO: alert user login failed
-                });
-                resetsXHR.open('POST', '/login');
-                resetsXHR.send(formData);
-            }}>
+            onClick={(e) => this.handleSubmitForm}>
           Login
         </button>
       </form>
@@ -1924,6 +1965,7 @@ class SignupForm extends Component {
         this.handleLastNameChange = this.handleLastNameChange.bind(this);
         this.handleEmailChange = this.handleEmailChange.bind(this);
         this.handlePasswordChange = this.handlePasswordChange.bind(this);
+        this.handleSubmitForm = this.handleSubmitForm.bind(this);
     }
 
     handleFirstNameChange (firstName) {
@@ -1946,6 +1988,28 @@ class SignupForm extends Component {
         this.setState({isShowSignupForm: isShowSignupForm})
     }
 
+    handleSubmitForm() {
+        var that = this;
+        var formData = new FormData();
+        formData.append("first-name", this.state.firstName);
+        formData.append("last-name", this.state.lastName);
+        formData.append("email", this.state.email);
+        formData.append("password", this.state.password);
+        var resetsXHR = new XMLHttpRequest();
+        resetsXHR.addEventListener('load', function(event) {
+            if (event.target.status === 201) {
+                that.handleIsShowSignupFormChange(false);
+            } else {
+                // TODO: alert user sign up failed
+            }
+        });
+        resetsXHR.addEventListener('error', function(event) {
+            // TODO: alert user sign up failed
+        });
+        resetsXHR.open('POST', '/signups');
+        resetsXHR.send(formData);
+    }
+
   render() {
       var content;
       if (this.state.isShowSignupForm) {
@@ -1959,13 +2023,16 @@ class SignupForm extends Component {
                       <SignupLastNameInput onLastNameChange={this.handleLastNameChange} />
                   </div>
                   <SignupEmailInput onEmailChange={this.handleEmailChange} />
-                  <SignupPasswordInput onPasswordChange={this.handlePasswordChange} />
+                  <SignupPasswordInput
+                      onPasswordChange={this.handlePasswordChange}
+                      onSubmitForm={this.handleSubmitForm}
+                  />
                   <SubmitSignupButton
-                      onIsShowSignupFormChange={this.handleIsShowSignupFormChange}
                       firstName={this.state.firstName}
                       lastName={this.state.lastName}
                       email={this.state.email}
                       password={this.state.password}
+                      onSubmitForm={this.handleSubmitForm}
                   />
               </form>
               Forget your password? Request a <a href="/resets">reset</a>.<br />
@@ -2097,10 +2164,17 @@ class SignupPasswordInput extends Component {
     constructor(props) {
         super(props);
         this.handlePasswordChange = this.handlePasswordChange.bind(this);
+        this.handleKeyPress = this.handleKeyPress.bind(this);
     }
 
     handlePasswordChange(event) {
         this.props.onPasswordChange(event.target.value);
+    }
+
+    handleKeyPress(event) {
+        if (event.key === "Enter") {
+            this.props.onSubmitForm();
+        }
     }
 
     render() {
@@ -2118,6 +2192,7 @@ class SignupPasswordInput extends Component {
                     name="password"
                     placeholder="Password"
                     onChange={(e) => this.handlePasswordChange(e)}
+                    onKeyPress={(e) => this.handleKeyPress(e)}
                     required
                   />
                 </div>
@@ -2130,11 +2205,11 @@ class SignupPasswordInput extends Component {
 class SubmitSignupButton extends Component {
     constructor(props) {
         super(props);
-        this.handleIsShowSignupFormChange = this.handleIsShowSignupFormChange.bind(this);
+        this.handleSubmitForm = this.handleSubmitForm.bind(this);
     }
 
-    handleIsShowSignupFormChange(isShowSignupForm) {
-        this.props.onIsShowSignupFormChange(isShowSignupForm);
+    handleSubmitForm() {
+        this.props.onSubmitForm();
     }
 
     render() {
@@ -2144,27 +2219,7 @@ class SubmitSignupButton extends Component {
                 <button
                   className="btn btn-lg btn-primary btn-block"
                   type="button"
-                  onClick={(e) => {
-                      var that = this;
-                      var formData = new FormData();
-                      formData.append("first-name", this.props.firstName);
-                      formData.append("last-name", this.props.lastName);
-                      formData.append("email", this.props.email);
-                      formData.append("password", this.props.password);
-                      var resetsXHR = new XMLHttpRequest();
-                      resetsXHR.addEventListener('load', function(event) {
-                          if (event.target.status === 201) {
-                              that.handleIsShowSignupFormChange(false);
-                          } else {
-                              // TODO: alert user sign up failed
-                          }
-                      });
-                      resetsXHR.addEventListener('error', function(event) {
-                          // TODO: alert user sign up failed
-                      });
-                      resetsXHR.open('POST', '/signups');
-                      resetsXHR.send(formData);
-                  }}
+                  onClick={() => this.handleSubmitForm()}
                 >
                   Sign up
                 </button>
