@@ -356,7 +356,12 @@ class Message extends Component {
             isShowReplyRecorder: false,
             isReplyPublicly: false
         }
+        this.handleIsShowReplyRecorderChange = this.handleIsShowReplyRecorderChange.bind(this);
         this.getMessage();
+    }
+
+    handleIsShowReplyRecorderChange(isShowReplyRecorder) {
+        this.setState({isShowReplyRecorder: isShowReplyRecorder});
     }
 
     getMessage() {
@@ -455,10 +460,11 @@ class Message extends Component {
                                                 </button>}
                                     </div>
                                 </div>
-                                {this.state.showReplyRecorder &&
+                                {this.state.isShowReplyRecorder &&
                                     <div>
                                         <ReplyRecorder
-                                            status={this.state.replyPublicly}
+                                            isReplyPublicly={this.state.isReplyPublicly}
+                                            onIsShowReplyRecorderChange={this.handleIsShowReplyRecorderChange}
                                             recipient={this.state.creatorID} />
                                     </div>
                                 }
@@ -478,6 +484,7 @@ class ReplyRecorder extends Component {
         this.handleIsLoadedChange = this.handleIsLoadedChange.bind(this);
         this.handleIsRecordingChange = this.handleIsRecordingChange.bind(this);
         this.handleSendReply = this.handleSendReply.bind(this);
+        this.handleIsShowReplyRecorderChange = this.handleIsShowReplyRecorderChange.bind(this);
         // Initial state is only time both isLoaded and isRecording are false.
         // At all other times, one will be true and the other false.
         this.state = {
@@ -486,6 +493,10 @@ class ReplyRecorder extends Component {
         };
         var context = this;
         this.recorder = new AudioRecorder(context);
+    }
+
+    handleIsShowReplyRecorderChange(isShowReplyRecorderChange) {
+        this.props.onIsShowReplyRecorderChange(isShowReplyRecorderChange);
     }
 
     handleSendReply() {
@@ -497,7 +508,7 @@ class ReplyRecorder extends Component {
             formData.append("isPublic", that.props.isReplyPublicly);
             var xhr = new XMLHttpRequest();
             xhr.addEventListener("load", function(event){
-                console.log("load event: ", event);
+                that.handleIsShowReplyRecorderChange(false);
             });
             xhr.addEventListener("error", function(event){
                 console.log("error event: ", event);

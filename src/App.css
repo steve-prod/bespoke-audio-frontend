@@ -187,6 +187,10 @@ audio {
   list-style: none;
 }
 
+.no-bullets button {
+    margin: 0px 2px;
+}
+
 .align-left {
     text-align: left;
 }
