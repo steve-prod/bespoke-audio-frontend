@@ -351,7 +351,10 @@ class Message extends Component {
         this.state = {
             creatorID: "",
             messageID: "",
-            error: ""
+            isPublic: false,
+            error: "",
+            isShowReplyRecorder: false,
+            isReplyPublicly: false
         }
         this.getMessage();
     }
@@ -365,6 +368,7 @@ class Message extends Component {
                 var message = JSON.parse(event.target.responseText);
                 that.setState({creatorID: message.creatorID});
                 that.setState({messageID: message.messageID});
+                that.setState({isPublic: message.isPublic});
             }
             if (event.target.status === 401) {
                 that.setState({error: "Please log in."});
@@ -394,6 +398,8 @@ class Message extends Component {
                             {this.state.error &&
                             <h1>{this.state.error}</h1>}
                             {!this.state.error &&
+                            <h1>{this.state.isPublic ? "Public" : "Private"} message</h1>}
+                            {!this.state.error &&
                             <ul class="no-bullets">
                                 <div class="row align-items-center message">
                                     <div class="col-xs-12 col-sm-8">
@@ -407,14 +413,13 @@ class Message extends Component {
                                             data-from={this.state.creatorID}
                                             data-message={"/messages/" + this.state.messageID}
                                             onClick={(e) => {
-                                                this.handleIsReplyingToPublicChange(false);
-                                                this.handleStatusTabChange('private-tab');
-                                                this.handleActiveTabChange('recorder');
-                                                this.handleRecipientChange(this.state.creatorID);
+                                                this.setState({isShowReplyRecorder: true})
+                                                this.setState({isReplyPublicly: false})
                                             }}
                                             >
                                                 Reply
                                             </button>
+                                        {!this.state.isPublic &&
                                         <button
                                             className="btn btn-danger"
                                             type="button"
@@ -434,9 +439,29 @@ class Message extends Component {
                                             }}
                                             >
                                                 Delete
-                                            </button>
+                                            </button>}
+                                            {this.state.isPublic &&
+                                                <button
+                                                    className="btn btn-danger"
+                                                    type="button"
+                                                    data-from={this.state.creatorID}
+                                                    data-message={"/messages/" + this.state.messageID}
+                                                    onClick={(e) => {
+                                                        this.setState({isReplyPublicly: true})
+                                                        this.setState({isShowReplyRecorder: true})
+                                                    }}
+                                                    >
+                                                        Reply All
+                                                </button>}
                                     </div>
                                 </div>
+                                {this.state.showReplyRecorder &&
+                                    <div>
+                                        <ReplyRecorder
+                                            status={this.state.replyPublicly}
+                                            recipient={this.state.creatorID} />
+                                    </div>
+                                }
                             </ul>}
                         </form>
                     </div>
@@ -444,6 +469,89 @@ class Message extends Component {
                 <Footer />
             </div>
         );
+    }
+}
+
+class ReplyRecorder extends Component {
+    constructor(props) {
+        super(props);
+        this.handleIsLoadedChange = this.handleIsLoadedChange.bind(this);
+        this.handleIsRecordingChange = this.handleIsRecordingChange.bind(this);
+        this.handleSendReply = this.handleSendReply.bind(this);
+        // Initial state is only time both isLoaded and isRecording are false.
+        // At all other times, one will be true and the other false.
+        this.state = {
+            isLoaded: false,
+            isRecording: false
+        };
+        var context = this;
+        this.recorder = new AudioRecorder(context);
+    }
+
+    handleSendReply() {
+        if(this.state.isLoaded) {
+            var that = this;
+            var formData = new FormData();
+            formData.append("blob", that.recorder.getBlob());
+            formData.append("recipient", that.props.recipient);
+            formData.append("isPublic", that.props.isReplyPublicly);
+            var xhr = new XMLHttpRequest();
+            xhr.addEventListener("load", function(event){
+                console.log("load event: ", event);
+            });
+            xhr.addEventListener("error", function(event){
+                console.log("error event: ", event);
+            });
+            xhr.open("POST", "/messages");
+            xhr.send(formData);
+        } else {
+            alert('No message has been recorded.')
+        }
+    }
+
+    handleIsLoadedChange(isLoaded) {
+        this.setState({isLoaded: isLoaded});
+    }
+
+    handleIsRecordingChange(isRecording) {
+        this.setState({isRecording: isRecording});
+    }
+
+    render() {
+      return (
+          <div>
+              <div id="recorder">
+                  <StartRecordingButton
+                      recorder={this.recorder}
+                      isLoaded={this.state.isLoaded}
+                      onIsLoadedChange={this.handleIsLoadedChange}
+                      isRecording={this.state.isRecording}
+                      onIsRecordingChange={this.handleIsRecordingChange}
+                  />
+                  <StopRecordingButton
+                      recorder={this.recorder}
+                      isLoaded={this.state.isLoaded}
+                      onIsLoadedChange={this.handleIsLoadedChange}
+                      isRecording={this.state.isRecording}
+                      onIsRecordingChange={this.handleIsRecordingChange}
+                  />
+                  <PlayRecordingButton
+                      recorder={this.recorder}
+                      isLoaded={this.state.isLoaded}
+                      onIsLoadedChange={this.handleIsLoadedChange}
+                      isRecording={this.state.isRecording}
+                      onIsRecordingChange={this.handleIsRecordingChange}
+                  />
+                  <RecordingStatusBanner isRecording={this.state.isRecording}/>
+                  <audio id="recorded-message" controls />
+                  <button
+                      className="btn btn-primary"
+                      type="button"
+                      onClick={this.handleSendReply}
+                  >Send Reply</button>
+              </div>
+          </div>
+      );
     }
 }
 
@@ -822,6 +930,8 @@ function AudioRecorder(context) {
     var numberOfAudioChannels = 1;
     var leftChannel = [];
     var recordingLength = 0;
+    var Storage = {};
+    var AudioContext = window.AudioContext || window.webkitAudioContext;
 
     var kbps = 32; // originally encoded to 128kbps mp3
     var mp3encoder = new lamejs.Mp3Encoder(numberOfAudioChannels, sampleRate, kbps);
@@ -886,7 +996,7 @@ function AudioRecorder(context) {
     }
 
     function setupStorage() {
-        Storage.context = new context.AudioContext();
+        Storage.context = new AudioContext();
         if (Storage.context.createJavaScriptNode) {
             jsAudioNode = Storage.context.createJavaScriptNode(bufferSize, numberOfAudioChannels, numberOfAudioChannels);
         } else if (Storage.context.createScriptProcessor) {
@@ -1098,7 +1208,7 @@ function RecordingStatusBanner(props) {
             <div>
         <hr />
             <h1 className="status-recording text-center">
-                Recording <img src="static/css/spinner.svg" alt="spinner" />
+                Recording <img src="/static/css/spinner.svg" alt="spinner" />
             </h1>
             <hr />
         </div>
@@ -1120,8 +1230,6 @@ function RecordingStatusBanner(props) {
 class Recorder extends Component {
     constructor(props) {
         super(props);
-        this.Storage = {};
-        this.AudioContext = window.AudioContext || window.webkitAudioContext;
         this.handleNeedsRefreshChange = this.handleNeedsRefreshChange.bind(this);
         this.handleIsLoadedChange = this.handleIsLoadedChange.bind(this);
         this.handleIsRecordingChange = this.handleIsRecordingChange.bind(this);
