@@ -194,3 +194,7 @@ audio {
 .align-left {
     text-align: left;
 }
+
+#btn-send-reply {
+    margin: 5px;
+}
