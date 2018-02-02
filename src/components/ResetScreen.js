@@ -1,5 +1,4 @@
 import React, { Component } from 'react';
-import classnames from 'classnames';
 import Footer from './Footer.js';
 
 export default class ResetScreen extends Component {

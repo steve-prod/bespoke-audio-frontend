@@ -198,3 +198,15 @@ audio {
 #btn-send-reply {
     margin: 5px;
 }
+
+.tag-dropdown.show {
+    /* An inline style is being set in a dependency somewhere.
+    !important is being used as a last resort */
+    transform:none !important;
+    width:100%;
+    padding:5px;
+}
+
+.tags-menu-item:hover {
+    background-color: #eeeeee;
+}

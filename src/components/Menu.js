@@ -32,7 +32,7 @@ export default class Menu extends Component {
           expand="md"
         >
           <img src={logo} className="App-logo" alt="logo" />
-          <NavbarBrand href="/">Bespoke-Audio</NavbarBrand>
+          <NavbarBrand href="/">Bespoke-Audio (beta)</NavbarBrand>
           <NavbarToggler onClick={this.toggle} />
           <Collapse isOpen={this.state.isOpen} navbar>
             <PrimaryNav />

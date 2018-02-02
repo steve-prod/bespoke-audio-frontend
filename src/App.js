@@ -1,10 +1,10 @@
 import React, { Component } from 'react';
 import './App.css';
-import classnames from 'classnames';
+// import classnames from 'classnames';
 // Begin custom components
 import About from './components/About.js';
 import AccountConfirmedScreen from './components/AccountConfirmedScreen.js';
-import Footer from './components/Footer.js';
+// import Footer from './components/Footer.js';
 import Menu from './components/Menu.js';
 import Message from './components/Message.js';
 import Messages from './components/Messages.js';

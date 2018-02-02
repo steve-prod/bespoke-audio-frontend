@@ -35,6 +35,7 @@ export default class MessageTabs extends Component {
         this.handleMessageIDChange = this.handleMessageIDChange.bind(this);
         this.handleIsReplyingToPublicChange = this.handleIsReplyingToPublicChange.bind(this);
         this.handleIsReplyingPubliclyChange = this.handleIsReplyingPubliclyChange.bind(this);
+        this.handlePublicChange = this.handlePublicChange.bind(this);
     }
 
     handleIsReplyingToPublicChange(isReplyingToPublic) {
@@ -90,20 +91,8 @@ export default class MessageTabs extends Component {
             if (event.target.responseText === "[]") {
                 that.setState({messages:[]});
             } else {
-                var messages = {};
-                messages.raw = messagesXHR.responseText;
-                messages.raw = messages.raw.slice(2,messages.raw.length-2); // Remove leading [{ and trailing }]
-                messages.raw = messages.raw.split("},{");
-                messages.mArray = [];
-                var line;
-                messages.raw.forEach(function(v, i) {
-                    line = v.split(",");
-                    var message = {};
-                    message.creatorID = JSON.parse(line[0].split(":")[1]);
-                    message.messageID = JSON.parse(line[1].split(":")[1]);
-                    messages.mArray.push(message);
-                });
-                that.setState({messages:messages.mArray});
+                var messages = JSON.parse(event.target.responseText);
+                that.setState({messages: messages});
             }
         });
         messagesXHR.addEventListener('error', function(event) {
@@ -119,21 +108,12 @@ export default class MessageTabs extends Component {
             if(event.target.responseText === "[]") {
                 that.setState({public:[]});
             } else {
-                var messages = {};
-                messages.raw = event.target.responseText;
-                messages.raw = messages.raw.slice(2,messages.raw.length-2); // Remove leading [{ and trailing }]
-                messages.raw = messages.raw.split("},{");
-                messages.mArray = [];
-                var line;
-                messages.raw.forEach(function(v, i) {
-                    line = v.split(",");
-                    var message = {};
-                    message.messageID = JSON.parse(line[0].split(":")[1]);
-                    message.tags = atob(JSON.parse(line[1].split(":")[1]));
-                    message.tags = message.tags.slice(2, message.tags.length - 2).split(',');
-                    messages.mArray.push(message);
+                var messages = JSON.parse(event.target.responseText);
+                messages.forEach(function(v, i) {
+                    v.tags = atob(v.tags);
+                    v.tags = v.tags.slice(2, v.tags.length - 2).split(',');
                 });
-                that.setState({public:messages.mArray});
+                that.setState({public: messages});
             }
         });
         publicXHR.addEventListener('error', function(event) {
@@ -141,6 +121,14 @@ export default class MessageTabs extends Component {
         });
         publicXHR.open('GET', '/public');
         publicXHR.send();
+    }
+
+    handlePublicChange(messages) {
+        if (Array.isArray(messages)) {
+            this.setState({public: messages});
+        } else {
+            this.refreshMessages();
+        }
     }
 
   render() {
@@ -210,6 +198,7 @@ export default class MessageTabs extends Component {
                <Col sm="12">
                  <Browse
                      messages={this.state.public}
+                     onPublicChange={this.handlePublicChange}
                      onStatusTabChange={this.handleStatusTabChange}
                      onActiveTabChange={this.handleActiveTabChange}
                      onMessageIDChange={this.handleMessageIDChange}
