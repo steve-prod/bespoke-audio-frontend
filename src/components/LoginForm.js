@@ -27,7 +27,7 @@ export default class LoginForm extends Component {
         }
     }
 
-    handleSubmitForm() {
+    handleSubmitForm(e) {
         var that = this;
         var formData = new FormData();
         formData.append("email", that.state.email);
@@ -70,7 +70,7 @@ export default class LoginForm extends Component {
         <button
             className="btn btn-primary"
             type="button"
-            onClick={(e) => this.handleSubmitForm}>
+            onClick={(e) => this.handleSubmitForm(e)}>
           Login
         </button>
       </form>
