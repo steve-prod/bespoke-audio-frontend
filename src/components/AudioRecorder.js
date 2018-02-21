@@ -62,7 +62,7 @@ export default function AudioRecorder(context) {
             }
             mp3buf = mp3encoder.flush();
             if (mp3buf.length > 0) mp3Data.push(new Int8Array(mp3buf));
-            self.blob = new Blob(mp3Data, {type: 'audio/mp3'});
+            self.blob = new Blob(mp3Data, {type: 'audio/mpeg'});
             callback(self.blob);
             clearRecordedData();
         });
