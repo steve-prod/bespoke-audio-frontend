@@ -73,7 +73,7 @@ export default class AccountConfirmedScreen extends Component {
                             required />
                         <button class="btn btn-lg btn-primary btn-block"
                             type="button"
-                            onClick={() => this.handleSubmitForm}
+                            onClick={this.handleSubmitForm}
                             >Sign in</button>
                     </form>
                 </div>

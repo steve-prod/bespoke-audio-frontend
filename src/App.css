@@ -161,6 +161,10 @@ audio {
   }
 }
 
+#browse-list {
+    margin-bottom: 59px;
+}
+
 #browse-list button {
   margin-right: 4.5px;
   list-style: none;
@@ -185,6 +189,7 @@ audio {
 
 .no-bullets {
   list-style: none;
+  margin-bottom: 59px;
 }
 
 .no-bullets button {
